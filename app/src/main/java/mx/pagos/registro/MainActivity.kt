@@ -193,3 +193,139 @@ private fun SummaryScreen() {
                 Text(money(value), color = Color.White, fontWeight = FontWeight.Medium)
             }
         }
+                Spacer(Modifier.height(72.dp))
+    }
+}
+
+@Composable
+private fun ActivityScreen() {
+    val ctx = LocalContext.current
+    val items = Store.items
+    val fmt = remember { SimpleDateFormat("d MMM, HH:mm", Locale("es", "MX")) }
+
+    if (items.isEmpty()) {
+        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Text(
+                "Sin movimientos. Los gastos que registres aparecerán aquí.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp, 20.dp, 20.dp, 88.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(items, key = { it.id }) { e ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(12.dp).background(categoryColor(e.category), CircleShape))
+                Spacer(Modifier.size(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(e.note.ifEmpty { e.category }, color = Color.White, maxLines = 1)
+                    Text(
+                        e.category + " · " + fmt.format(Date(e.ts)),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                }
+                Text(money(e.amount), color = Color.White, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    "✕",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { Store.remove(ctx, e.id) }.padding(4.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun serviceEnabled(ctx: Context): Boolean {
+    val enabled = Settings.Secure.getString(
+        ctx.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    return enabled.contains(ctx.packageName) && enabled.contains("VolumeGestureService")
+}
+@Composable
+private fun GestureScreen(tick: Int) {
+    val ctx = LocalContext.current
+    val active = remember(tick) { serviceEnabled(ctx) }
+    var button by remember(tick) { mutableIntStateOf(Prefs.button(ctx)) }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("Gesto del botón de volumen", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+
+        Column(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                if (active) "Estado: activo" else "Estado: inactivo",
+                color = if (active) Color(0xFF2ED3B7) else Color(0xFFFFC857),
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                "1. Abre los ajustes de accesibilidad.\n" +
+                    "2. Entra a Apps instaladas (o Servicios descargados).\n" +
+                    "3. Elige Pagos y actívalo. No lee la pantalla; solo detecta el botón de volumen.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+            )
+            Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }) {
+                Text("Abrir accesibilidad")
+            }
+        }
+
+        Column(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Doble pulsación de", color = Color.White, fontWeight = FontWeight.Medium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Volumen +", "Volumen −", "Cualquiera").forEachIndexed { i, label ->
+                    FilterChip(
+                        selected = button == i,
+                        onClick = { button = i; Prefs.setButton(ctx, i) },
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
+
+        Column(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Ajustes para Xiaomi (HyperOS)", color = Color.White, fontWeight = FontWeight.Medium)
+            Text(
+                "Si el gesto deja de responder, el sistema cerró la app. Revisa:\n" +
+                    "• Info de la app → Inicio automático: activado.\n" +
+                    "• Info de la app → Ahorro de batería: Sin restricciones.\n" +
+                    "• Pantalla de apps recientes: mantén presionada la tarjeta de Pagos y fíjala con el candado.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+            )
+            OutlinedButton(onClick = {
+                ctx.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ctx.packageName))
+                )
+            }) { Text("Abrir info de la app") }
+        }
+
+        OutlinedButton(onClick = { ctx.startActivity(Intent(ctx, QuickCaptureActivity::class.java)) }) {
+            Text("Probar registro rápido")
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
