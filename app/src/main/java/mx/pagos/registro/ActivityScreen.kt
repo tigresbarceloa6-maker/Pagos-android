@@ -1,5 +1,8 @@
 package mx.pagos.registro
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +20,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -74,6 +79,8 @@ fun ActivityScreen() {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "header") {
+            val grow = remember { Animatable(0f) }
+            LaunchedEffect(Unit) { grow.animateTo(1f, tween(800, easing = FastOutSlowInEasing)) }
             Column(
                 Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -91,13 +98,15 @@ fun ActivityScreen() {
                         val slot = size.width / daysInMonth
                         val barW = slot * 0.5f
                         val maxV = if (maxDay > 0) maxDay else 1.0
+                        val g = grow.value
                         for (d in 1..daysInMonth) {
                             val v = daily[d]
-                            val h = if (v > 0) {
+                            val full = if (v > 0) {
                                 (v / maxV * size.height).toFloat().coerceAtLeast(4.dp.toPx())
                             } else {
                                 3.dp.toPx()
                             }
+                            val h = full * g
                             val x = (d - 0.5f) * slot
                             drawRoundRect(
                                 color = if (v > 0) Color(0xF2FFFFFF) else Color(0x22FFFFFF),

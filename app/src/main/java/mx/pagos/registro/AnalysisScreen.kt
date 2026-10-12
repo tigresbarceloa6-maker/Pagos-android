@@ -1,5 +1,8 @@
 package mx.pagos.registro
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -38,6 +43,8 @@ fun AnalysisScreen() {
     val withData = totals.filter { it > 0 }
     val average = if (withData.isEmpty()) 0.0 else withData.sum() / withData.size
     val top = totalsByCategory(items, 0).firstOrNull()
+    val grow = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { grow.animateTo(1f, tween(800, easing = FastOutSlowInEasing)) }
 
     Column(
         modifier = Modifier
@@ -58,12 +65,14 @@ fun AnalysisScreen() {
             Canvas(Modifier.fillMaxWidth().height(180.dp)) {
                 val slot = size.width / totals.size
                 val barW = slot * 0.42f
+                val g = grow.value
                 totals.forEachIndexed { i, v ->
-                    val h = if (v > 0) {
+                    val full = if (v > 0) {
                         (v / maxV * size.height).toFloat().coerceAtLeast(6.dp.toPx())
                     } else {
                         4.dp.toPx()
                     }
+                    val h = full * g
                     val x = (i + 0.5f) * slot
                     val top = size.height - h
                     val brush = if (v > 0) {

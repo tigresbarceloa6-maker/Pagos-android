@@ -1,5 +1,9 @@
 package mx.pagos.registro
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +42,12 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 @Composable
-fun Donut(totals: List<Pair<String, Double>>, selected: String?, modifier: Modifier = Modifier) {
+fun Donut(
+    totals: List<Pair<String, Double>>,
+    selected: String?,
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
     val total = totals.sumOf { it.second }
     Canvas(modifier) {
         val stroke = 26.dp.toPx()
@@ -49,12 +59,12 @@ fun Donut(totals: List<Pair<String, Double>>, selected: String?, modifier: Modif
             val gap = if (totals.size > 1) 3f else 0f
             var start = -90f
             totals.forEach { (name, value) ->
-                val sweep = (value / total * 360).toFloat()
+                val sweep = (value / total * 360 * progress).toFloat()
                 val alpha = if (selected == null || selected == name) 1f else 0.22f
                 drawArc(
                     color = categoryColor(name).copy(alpha = alpha),
-                    startAngle = start + gap / 2,
-                    sweepAngle = (sweep - gap).coerceAtLeast(1f),
+                    startAngle = start + gap * progress / 2,
+                    sweepAngle = (sweep - gap * progress).coerceAtLeast(0f),
                     useCenter = false,
                     topLeft = topLeft,
                     size = arcSize,
@@ -74,6 +84,8 @@ fun SummaryScreen() {
     val counts = countsByCategory(items, 0)
     val prevTotals = totalsByCategory(items, -1)
     var selected by remember { mutableStateOf<String?>(null) }
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { progress.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) }
     val sel: String? = selected?.takeIf { s -> current.any { it.first == s } }
 
     val shownTotal = if (sel != null) current.first { it.first == sel }.second else total
@@ -82,6 +94,7 @@ fun SummaryScreen() {
     } else {
         prevTotals.sumOf { it.second }
     }
+    val animTotal by animateFloatAsState(shownTotal.toFloat(), tween(600), label = "total")
     val prevName = monthName(-1).take(3)
     val pct: Int? = if (shownPrev > 0) ((shownTotal - shownPrev) / shownPrev * 100).roundToInt() else null
     val deltaText = if (pct != null) {
@@ -99,14 +112,14 @@ fun SummaryScreen() {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Box(Modifier.size(270.dp), contentAlignment = Alignment.Center) {
-            Donut(current, sel, Modifier.fillMaxSize())
+            Donut(current, sel, progress.value, Modifier.fillMaxSize())
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(sel ?: monthName(0), color = Ui.TextMuted, fontSize = 13.sp)
                 Text(
-                    money(shownTotal),
+                    money(animTotal.toDouble()),
                     color = Color.White,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.SemiBold,

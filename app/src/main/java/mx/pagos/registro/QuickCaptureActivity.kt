@@ -9,9 +9,17 @@ class QuickCaptureActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
         Store.load(this)
         setContent {
-            AppTheme { CaptureScreen(onClose = { finish() }) }
+            AppTheme { CaptureScreen(onFinish = { finish() }) }
         }
+    }
+
+    override fun finish() {
+        super.finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 }

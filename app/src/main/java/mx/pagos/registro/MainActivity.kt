@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,11 +56,13 @@ private fun Root(tick: Int) {
 
     AppBackground {
         Box(Modifier.fillMaxSize()) {
-            when (tab) {
-                0 -> ActivityScreen()
-                1 -> SummaryScreen()
-                2 -> AnalysisScreen()
-                else -> GestureScreen(tick)
+            Crossfade(targetState = tab, animationSpec = tween(240), label = "tab") { t ->
+                when (t) {
+                    0 -> ActivityScreen()
+                    1 -> SummaryScreen()
+                    2 -> AnalysisScreen()
+                    else -> GestureScreen(tick)
+                }
             }
         }
 
