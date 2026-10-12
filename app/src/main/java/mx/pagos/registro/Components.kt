@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -293,9 +292,11 @@ fun Modifier.swipePeriods(offset: Int, onOffset: (Int) -> Unit): Modifier = poin
 
 fun periodTransition(forward: Boolean): ContentTransform {
     val dir = if (forward) 1 else -1
-    return (slideInHorizontally(tween(320)) { it * dir / 4 } + fadeIn(tween(320))) togetherWith
-        (slideOutHorizontally(tween(320)) { -it * dir / 4 } + fadeOut(tween(180))) using
-        SizeTransform(clip = false)
+    return ContentTransform(
+        targetContentEnter = slideInHorizontally(tween(320)) { it * dir / 4 } + fadeIn(tween(320)),
+        initialContentExit = slideOutHorizontally(tween(320)) { -it * dir / 4 } + fadeOut(tween(180)),
+        sizeTransform = SizeTransform(clip = false),
+    )
 }
 
 @Composable
