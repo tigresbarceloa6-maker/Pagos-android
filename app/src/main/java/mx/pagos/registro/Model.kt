@@ -7,7 +7,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 data class Expense(
@@ -18,28 +20,65 @@ data class Expense(
     val ts: Long,
 )
 
-data class Category(val name: String, val color: Color)
+data class Category(val name: String, val color: Color, val emoji: String)
 
 val Categories = listOf(
-    Category("Vivienda", Color(0xFF8E7CFF)),
-    Category("Comida", Color(0xFF3FA9FF)),
-    Category("Supermercado", Color(0xFF2ED3B7)),
-    Category("Servicios", Color(0xFFFFC857)),
-    Category("Transporte", Color(0xFFFF7A59)),
-    Category("Compras", Color(0xFFFF5C9D)),
-    Category("Ropa", Color(0xFFB0E05A)),
-    Category("Salir", Color(0xFF5B6CFF)),
-    Category("Entretenimiento", Color(0xFFC77DFF)),
-    Category("Otros", Color(0xFF9AA3BF)),
+    Category("Vivienda", Color(0xFF7C83FF), "🏠"),
+    Category("Comida", Color(0xFF38BDF8), "🍽️"),
+    Category("Supermercado", Color(0xFFFF5C8A), "🛒"),
+    Category("Servicios", Color(0xFFFFC857), "💡"),
+    Category("Transporte", Color(0xFFFF8A5B), "🚗"),
+    Category("Compras", Color(0xFFF472D0), "🛍️"),
+    Category("Ropa", Color(0xFFA3E635), "👕"),
+    Category("Salir", Color(0xFF5EEAD4), "🎉"),
+    Category("Entretenimiento", Color(0xFFC084FC), "🎬"),
+    Category("Otros", Color(0xFF94A3B8), "✨"),
 )
 
 fun categoryColor(name: String): Color =
-    Categories.firstOrNull { it.name == name }?.color ?: Color(0xFF9AA3BF)
+    Categories.firstOrNull { it.name == name }?.color ?: Color(0xFF94A3B8)
 
-private val moneyFormat: NumberFormat =
-    NumberFormat.getCurrencyInstance(Locale("es", "MX"))
+fun categoryEmoji(name: String): String =
+    Categories.firstOrNull { it.name == name }?.emoji ?: "✨"
 
-fun money(value: Double): String = moneyFormat.format(value)
+private val moneyWhole: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "MX")).apply {
+    maximumFractionDigits = 0
+    minimumFractionDigits = 0
+}
+private val moneyCents: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "MX")).apply {
+    maximumFractionDigits = 2
+    minimumFractionDigits = 2
+}
+
+fun money(value: Double): String =
+    if (Math.round(value * 100) % 100L == 0L) moneyWhole.format(value) else moneyCents.format(value)
+
+fun monthName(offset: Int): String {
+    val c = Calendar.getInstance()
+    c.add(Calendar.MONTH, offset)
+    return SimpleDateFormat("LLLL", Locale("es", "MX")).format(c.time)
+        .replaceFirstChar { it.uppercase() }
+}
+
+fun dayStart(ts: Long): Long {
+    val c = Calendar.getInstance()
+    c.timeInMillis = ts
+    c.set(Calendar.HOUR_OF_DAY, 0)
+    c.set(Calendar.MINUTE, 0)
+    c.set(Calendar.SECOND, 0)
+    c.set(Calendar.MILLISECOND, 0)
+    return c.timeInMillis
+}
+
+fun dayLabel(dayStartMs: Long): String {
+    val today = dayStart(System.currentTimeMillis())
+    val yesterday = dayStart(today - 12L * 3600 * 1000)
+    return when (dayStartMs) {
+        today -> "Hoy"
+        yesterday -> "Ayer"
+        else -> SimpleDateFormat("d MMM", Locale("es", "MX")).format(Date(dayStartMs))
+    }
+}
 
 /** Inicio y fin (exclusivo) del mes actual desplazado por [offset] meses. */
 fun monthRange(offset: Int): Pair<Long, Long> {
@@ -62,6 +101,14 @@ fun totalsByCategory(items: List<Expense>, offset: Int): List<Pair<String, Doubl
         .groupBy { it.category }
         .map { (cat, list) -> cat to list.sumOf { it.amount } }
         .sortedByDescending { it.second }
+}
+
+fun countsByCategory(items: List<Expense>, offset: Int): Map<String, Int> {
+    val (start, end) = monthRange(offset)
+    return items
+        .filter { it.ts in start until end }
+        .groupingBy { it.category }
+        .eachCount()
 }
 
 object Store {

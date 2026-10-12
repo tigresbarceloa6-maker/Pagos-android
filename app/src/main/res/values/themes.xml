@@ -1,8 +1,8 @@
 <resources>
     <style name="Theme.Pagos" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#FF0B0E1A</item>
-        <item name="android:statusBarColor">#FF0B0E1A</item>
-        <item name="android:navigationBarColor">#FF0B0E1A</item>
+        <item name="android:windowBackground">#FF070A14</item>
+        <item name="android:statusBarColor">#FF121B3D</item>
+        <item name="android:navigationBarColor">#FF070A14</item>
     </style>
     <style name="Theme.Capture" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
