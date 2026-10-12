@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Pagos</string>
+    <string name="tile_label">Registrar gasto</string>
+    <string name="service_desc">Detecta la doble pulsación del botón de volumen para abrir el registro rápido de gastos. No lee el contenido de la pantalla.</string>
+</resources>
