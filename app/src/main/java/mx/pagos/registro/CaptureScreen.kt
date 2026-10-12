@@ -185,3 +185,11 @@ fun CaptureScreen(onClose: () -> Unit) {
                             onClose()
                         },
                         modifier = Modifier.weight(1f),
+                                            ) {
+                        Text("Guardar")
+                    }
+                }
+            }
+        }
+    }
+}
