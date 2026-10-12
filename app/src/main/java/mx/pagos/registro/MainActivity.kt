@@ -3,41 +3,51 @@ package mx.pagos.registro
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     private val tick = mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         Store.load(this)
         setContent { AppTheme { Root(tick.intValue) } }
     }
@@ -51,60 +61,98 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun Root(tick: Int) {
     val ctx = LocalContext.current
-    var tab by remember { mutableIntStateOf(1) }
-    val tabs = listOf("Actividad" to "☰", "Resumen" to "◔", "Análisis" to "▥", "Gesto" to "◉")
+    var tab by remember { mutableIntStateOf(0) }
+    var filterState by remember { mutableStateOf(Filter()) }
+    var accent by remember { mutableStateOf<Color?>(null) }
+    var settings by remember { mutableStateOf(false) }
+    var budgetFor by remember { mutableStateOf<String?>(null) }
+    var addingAccount by remember { mutableStateOf(false) }
 
-    AppBackground {
-        Box(Modifier.fillMaxSize()) {
-            Crossfade(targetState = tab, animationSpec = tween(240), label = "tab") { t ->
+    // Si se borró la cuenta filtrada, se vuelve a "Todas las cuentas".
+    val filter = filterState.account?.let { a ->
+        if (a in Config.accounts) filterState else filterState.copy(account = null)
+    } ?: filterState
+    val setFilter: (Filter) -> Unit = { filterState = it }
+    val openSettings = { settings = true }
+
+    val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val top = when (tab) {
+        0 -> Ui.TopActivity
+        1 -> accent?.let { lerp(it, Color.Black, 0.12f) } ?: Ui.TopSummary
+        2 -> Ui.TopBudget
+        3 -> Ui.TopAnalysis
+        else -> Ui.TopAccounts
+    }
+
+    BackHandler(enabled = settings) { settings = false }
+
+    CompositionLocalProvider(LocalBottomPad provides navInset + 100.dp) {
+        AppBackground(top) {
+            Crossfade(targetState = tab, animationSpec = tween(260), label = "pestaña") { t ->
                 when (t) {
-                    0 -> ActivityScreen()
-                    1 -> SummaryScreen()
-                    2 -> AnalysisScreen()
-                    else -> GestureScreen(tick)
+                    0 -> ActivityScreen(filter, setFilter, openSettings)
+                    1 -> SummaryScreen(filter, setFilter, { accent = it }, openSettings)
+                    2 -> BudgetScreen(openSettings) { budgetFor = it }
+                    3 -> AnalysisScreen(filter, setFilter, openSettings)
+                    else -> AccountsScreen(openSettings) { addingAccount = true }
                 }
             }
-        }
 
-        if (tab != 3) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 104.dp)
-                    .size(54.dp)
+                    .padding(end = 22.dp, bottom = navInset + 92.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
-                    .background(Ui.Accent)
+                    .background(Color(0xF2E9EDFF))
+                    .border(1.dp, Color(0x33FFFFFF), CircleShape)
                     .clickable { ctx.startActivity(Intent(ctx, QuickCaptureActivity::class.java)) },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("+", fontSize = 28.sp, color = Color(0xFF0B1126))
+                GlyphIcon(R.drawable.ic_add, Color(0xFF3D63F5), 24.dp)
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .background(Color(0xF0141B38), RoundedCornerShape(28.dp))
-                .border(1.dp, Ui.GlassBorder, RoundedCornerShape(28.dp))
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            tabs.forEachIndexed { i, (label, glyph) ->
-                val selected = tab == i
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(if (selected) Color(0x40A9B4FF) else Color.Transparent)
-                        .clickable { tab = i }
-                        .padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(glyph, fontSize = 18.sp, color = if (selected) Color.White else Ui.TextMuted)
-                    Text(label, fontSize = 11.sp, color = if (selected) Color.White else Ui.TextMuted)
+            NavBar(
+                selected = tab,
+                onSelect = {
+                    if (it != tab) accent = null
+                    tab = it
+                },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = navInset + 10.dp),
+            )
+
+            AnimatedVisibility(
+                visible = settings,
+                enter = slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)),
+                exit = slideOutHorizontally(tween(250)) { it } + fadeOut(tween(250)),
+            ) {
+                AppBackground(Ui.TopAnalysis) {
+                    SettingsScreen(tick, onBack = { settings = false })
                 }
+            }
+
+            budgetFor?.let { c ->
+                AmountPrompt(
+                    title = "Presupuesto para $c",
+                    initial = Config.budgets[c]?.let { plainAmount(it) } ?: "",
+                    onDismiss = { budgetFor = null },
+                    onConfirm = {
+                        Config.setBudget(ctx, c, it)
+                        budgetFor = null
+                    },
+                )
+            }
+
+            if (addingAccount) {
+                TextPrompt(
+                    title = "Nueva cuenta",
+                    placeholder = "Nombre de la cuenta",
+                    onDismiss = { addingAccount = false },
+                    onConfirm = {
+                        Config.addAccount(ctx, it)
+                        addingAccount = false
+                    },
+                )
             }
         }
     }

@@ -42,6 +42,7 @@ class VolumeGestureService : AccessibilityService() {
     private fun openCapture() {
         val intent = Intent(this, QuickCaptureActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra(QuickCaptureActivity.EXTRA_GESTURE, true)
         startActivity(intent)
     }
 

@@ -1,15 +1,24 @@
 package mx.pagos.registro
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,14 +29,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,301 +48,279 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-private val Keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫")
-private val Blue = Color(0xFF0A84FF)
-
 /**
- * Tarjeta flotante de captura en 3 pasos (monto, categoría, nota), con
- * entrada y salida animadas. Se muestra sobre cualquier app sin abrir la principal.
+ * Registro rápido en 3 pasos como en iOS: alerta "Ingresa el monto" arriba con
+ * teclado numérico abajo, menú "Categoría" y nota. Al guardar muestra una
+ * píldora con ✓ y se cierra sola. Se muestra sobre cualquier app, incluso bloqueada.
  */
 @Composable
-fun CaptureScreen(onFinish: () -> Unit) {
+fun CaptureScreen(fromGesture: Boolean, onFinish: () -> Unit) {
     val ctx = LocalContext.current
+    val focusManager = LocalFocusManager.current
     var step by remember { mutableIntStateOf(0) }
     var amount by remember { mutableStateOf("") }
     var cat by remember { mutableStateOf<String?>(null) }
     var note by remember { mutableStateOf("") }
     var closing by remember { mutableStateOf(false) }
     var shown by remember { mutableStateOf(false) }
+    var banner by remember { mutableStateOf(fromGesture) }
 
-    LaunchedEffect(Unit) { shown = true }
+    LaunchedEffect(Unit) {
+        shown = true
+        if (fromGesture) {
+            delay(1700)
+            banner = false
+        }
+    }
     LaunchedEffect(closing) {
         if (closing) {
-            delay(200)
+            delay(240)
             onFinish()
         }
     }
     LaunchedEffect(step) {
         if (step == 3) {
-            delay(800)
+            delay(1400)
             closing = true
         }
     }
 
     BackHandler {
-        if (step in 1..2) {
-            step -= 1
-        } else {
-            closing = true
-        }
-    }
-
-    val visible = shown && !closing
-    val scaleV by animateFloatAsState(
-        targetValue = if (visible) 1f else 0.92f,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = 380f),
-        label = "scale",
-    )
-    val alphaV by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(180),
-        label = "alpha",
-    )
-
-    fun press(key: String) {
-        amount = when (key) {
-            "⌫" -> amount.dropLast(1)
-            "." -> if (amount.contains('.')) amount else (if (amount.isEmpty()) "0." else amount + ".")
-            else -> {
-                val decimals = amount.substringAfter('.', "")
-                if (amount.length >= 9 || (amount.contains('.') && decimals.length >= 2)) amount
-                else if (amount == "0") key else amount + key
-            }
-        }
+        if (step in 1..2) step -= 1 else closing = true
     }
 
     fun save() {
         val value = amount.toDoubleOrNull() ?: return
         val c = cat ?: return
-        Store.add(ctx, value, c, note)
+        if (value <= 0.0) return
+        focusManager.clearFocus()
+        Store.add(ctx, value, c, note, isIncomeCategory(c), Config.defaultAccount.value)
         step = 3
     }
 
+    val visible = shown && !closing
+    val dim by animateFloatAsState(if (visible && step < 3) 1f else 0f, tween(220), label = "atenuado")
+
     Box(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.55f * alphaV))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { closing = true },
-        contentAlignment = Alignment.Center,
+            .background(Color.Black.copy(alpha = 0.45f * dim))
+            .tapNoRipple { }
     ) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .widthIn(max = 380.dp)
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scaleV
-                    scaleY = scaleV
-                    this.alpha = alphaV
-                    translationY = (1f - alphaV) * 48f
-                }
-                .background(Color(0xF2111835), RoundedCornerShape(28.dp))
-                .border(1.dp, Ui.GlassBorder, RoundedCornerShape(28.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { }
-                .animateContentSize()
-                .padding(20.dp),
-        ) {
-            Crossfade(targetState = step, animationSpec = tween(220), label = "step") { s ->
-                when (s) {
-                    0 -> AmountStep(
-                        amount = amount,
-                        onKey = { press(it) },
-                        onCancel = { closing = true },
-                        onOk = { step = 1 },
-                    )
-                    1 -> CategoryStep(
-                        selected = cat,
-                        onPick = {
-                            cat = it
-                            step = 2
-                        },
-                        onBack = { step = 0 },
-                    )
-                    2 -> NoteStep(
-                        amount = amount,
-                        category = cat ?: "",
-                        note = note,
-                        onNote = { note = it },
-                        onBack = { step = 1 },
-                        onSave = { save() },
-                    )
-                    else -> DoneStep(amount = amount, category = cat ?: "")
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 6.dp)) {
+            AnimatedVisibility(
+                visible = banner && visible,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+                    GestureBanner()
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(
-    text: String,
-    primary: Boolean,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    val bg = if (primary) {
-        if (enabled) Blue else Blue.copy(alpha = 0.35f)
-    } else {
-        Color(0x1FFFFFFF)
-    }
-    Box(
-        modifier = modifier
-            .height(46.dp)
-            .clip(RoundedCornerShape(23.dp))
-            .background(bg)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-    }
-}
-
-@Composable
-private fun AmountStep(
-    amount: String,
-    onKey: (String) -> Unit,
-    onCancel: () -> Unit,
-    onOk: () -> Unit,
-) {
-    val valid = (amount.toDoubleOrNull() ?: 0.0) > 0.0
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Ingresa el monto", color = Ui.TextMuted, fontSize = 14.sp)
-        Text(
-            text = "\$" + amount.ifEmpty { "0" },
-            color = Color.White,
-            fontSize = 44.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Keys.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { key ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
-                            .glass(14.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable { onKey(key) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(key, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Medium)
+            AnimatedVisibility(
+                visible = visible && step < 3,
+                enter = fadeIn(tween(200)) + scaleIn(spring(dampingRatio = 0.75f, stiffness = 420f), initialScale = 0.9f),
+                exit = fadeOut(tween(150)) + scaleOut(tween(150), targetScale = 0.95f),
+            ) {
+                AlertCard(Modifier.animateContentSize()) {
+                    AnimatedContent(
+                        targetState = minOf(step, 2),
+                        transitionSpec = {
+                            (fadeIn(tween(180)) togetherWith fadeOut(tween(120))) using SizeTransform(clip = false)
+                        },
+                        label = "paso",
+                    ) { s ->
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            when (s) {
+                                0 -> AmountStep(
+                                    amount = amount,
+                                    onClear = { amount = "" },
+                                    onCancel = { closing = true },
+                                    onOk = { step = 1 },
+                                )
+                                1 -> CategoryStep(
+                                    onPick = {
+                                        cat = it
+                                        step = 2
+                                    },
+                                    onCancel = { closing = true },
+                                )
+                                else -> NoteStep(
+                                    note = note,
+                                    onNote = { note = it },
+                                    onCancel = { closing = true },
+                                    onOk = { save() },
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ActionButton("Cancelar", false, Modifier.weight(1f), onClick = onCancel)
-            ActionButton("OK", true, Modifier.weight(1f), enabled = valid, onClick = onOk)
-        }
-    }
-}
 
-@Composable
-private fun CategoryStep(selected: String?, onPick: (String) -> Unit, onBack: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Categoría", color = Ui.TextMuted, fontSize = 14.sp)
-        Column(
-            modifier = Modifier
-                .heightIn(max = 380.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        AnimatedVisibility(
+            visible = step == 3 && !closing,
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 10.dp),
+            enter = fadeIn() + scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), initialScale = 0.6f),
+            exit = fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.8f),
         ) {
-            Categories.forEach { c ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (selected == c.name) c.color.copy(alpha = 0.2f) else Color.Transparent)
-                        .clickable { onPick(c.name) }
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CategoryBadge(c.name, 36.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Text(c.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                }
-            }
+            DonePill(amount, cat ?: "")
         }
-        ActionButton("Atrás", false, Modifier.fillMaxWidth(), onClick = onBack)
+
+        AnimatedVisibility(
+            visible = visible && step == 0,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(spring(dampingRatio = 0.9f, stiffness = 500f)) { it },
+            exit = slideOutVertically(tween(200)) { it },
+        ) {
+            NumericKeypad(onKey = { amount = pressKey(amount, it) })
+        }
     }
 }
 
 @Composable
-private fun NoteStep(
-    amount: String,
-    category: String,
-    note: String,
-    onNote: (String) -> Unit,
-    onBack: () -> Unit,
-    onSave: () -> Unit,
-) {
+private fun AmountStep(amount: String, onClear: () -> Unit, onCancel: () -> Unit, onOk: () -> Unit) {
+    AlertTitle("Ingresa el monto")
+    AmountField(amount, onClear)
+    AlertButtons(
+        onCancel = onCancel,
+        onOk = onOk,
+        okEnabled = (amount.toDoubleOrNull() ?: 0.0) > 0.0,
+    )
+}
+
+@Composable
+private fun CategoryStep(onPick: (String) -> Unit, onCancel: () -> Unit) {
+    AlertTitle("Categoría")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 440.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0x14FFFFFF))
+            .verticalScroll(rememberScrollState()),
+    ) {
+        ExpenseCategories.forEachIndexed { i, c ->
+            if (i > 0) MenuDivider()
+            MenuRow(c) { onPick(c.name) }
+        }
+        Text(
+            "Ingresos",
+            color = Ui.TextMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+        )
+        IncomeCategories.forEachIndexed { i, c ->
+            if (i > 0) MenuDivider()
+            MenuRow(c) { onPick(c.name) }
+        }
+    }
+    CapsuleButton("Cancelar", Color(0x24FFFFFF), Modifier.fillMaxWidth(), onClick = onCancel)
+}
+
+@Composable
+private fun MenuRow(c: Category, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(c.emoji, fontSize = 18.sp)
+        Spacer(Modifier.width(12.dp))
+        Text(c.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun MenuDivider() {
+    Box(
+        Modifier
+            .padding(start = 46.dp)
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(Color(0x1FFFFFFF))
+    )
+}
+
+@Composable
+private fun NoteStep(note: String, onNote: (String) -> Unit, onCancel: () -> Unit, onOk: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
-        delay(300)
+        delay(250)
         try {
             focus.requestFocus()
         } catch (_: Exception) {
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Nota", color = Ui.TextMuted, fontSize = 14.sp)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CategoryBadge(category, 36.dp)
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(category, color = Color.White, fontWeight = FontWeight.Medium)
-                Text(money(amount.toDoubleOrNull() ?: 0.0), color = Ui.TextMuted, fontSize = 13.sp)
-            }
+    NoteField(
+        value = note,
+        onValue = onNote,
+        placeholder = "Nota (opcional)",
+        focus = focus,
+        onDone = onOk,
+    )
+    AlertButtons(onCancel = onCancel, onOk = onOk)
+}
+
+/** Aviso superior, como el de "Tocar atrás" en iOS. */
+@Composable
+private fun GestureBanner() {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xF0121318))
+            .padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(28.dp).clip(CircleShape).background(Ui.Blue),
+            contentAlignment = Alignment.Center,
+        ) {
+            GlyphIcon(R.drawable.ic_volume, Color.White, 16.dp)
         }
-        OutlinedTextField(
-            value = note,
-            onValueChange = onNote,
-            placeholder = { Text("Nota (opcional)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSave() }),
-            modifier = Modifier.fillMaxWidth().focusRequester(focus),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ActionButton("Atrás", false, Modifier.weight(1f), onClick = onBack)
-            ActionButton("OK", true, Modifier.weight(1f), onClick = onSave)
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text("Botón de volumen", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("Doble pulsación detectada", color = Color(0xB3FFFFFF), fontSize = 11.sp)
         }
     }
 }
 
+/** Confirmación tipo isla: píldora negra con ✓. */
 @Composable
-private fun DoneStep(amount: String, category: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+private fun DonePill(amount: String, category: String) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black)
+            .padding(start = 8.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("✓", color = Ui.Good, fontSize = 44.sp, fontWeight = FontWeight.Bold)
-        Text("Gasto guardado", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            money(amount.toDoubleOrNull() ?: 0.0) + " · " + category,
-            color = Ui.TextMuted,
-            fontSize = 13.sp,
-        )
+        Box(
+            Modifier.size(28.dp).clip(CircleShape).background(Ui.Good),
+            contentAlignment = Alignment.Center,
+        ) {
+            GlyphIcon(R.drawable.ic_check, Color(0xFF06231D), 18.dp)
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text("Guardado", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                money(amount.toDoubleOrNull() ?: 0.0) + " · " + category,
+                color = Color(0xB3FFFFFF),
+                fontSize = 12.sp,
+            )
+        }
     }
 }
