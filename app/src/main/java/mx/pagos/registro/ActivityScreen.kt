@@ -1,206 +1,307 @@
 package mx.pagos.registro
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.math.roundToInt
 
 @Composable
-fun ActivityScreen() {
+fun ActivityScreen(filter: Filter, onFilter: (Filter) -> Unit, onSettings: () -> Unit) {
     val ctx = LocalContext.current
-    val items = Store.items
-    val total = totalsByCategory(items, 0).sumOf { it.second }
-    val prevTotal = totalsByCategory(items, -1).sumOf { it.second }
-    val cal = Calendar.getInstance()
-    val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-    val today = cal.get(Calendar.DAY_OF_MONTH)
-    val (start, end) = monthRange(0)
+    var offset by remember(filter.period) { mutableIntStateOf(0) }
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var open by remember { mutableStateOf<Long?>(null) }
 
-    val daily = DoubleArray(daysInMonth + 1)
-    items.forEach { e ->
-        if (e.ts in start until end) {
-            val c = Calendar.getInstance()
-            c.timeInMillis = e.ts
-            daily[c.get(Calendar.DAY_OF_MONTH)] += e.amount
-        }
-    }
-    val maxDay = daily.maxOrNull() ?: 0.0
-    val avg = if (today > 0) total / today else 0.0
-
-    val pct: Int? = if (prevTotal > 0) ((total - prevTotal) / prevTotal * 100).roundToInt() else null
-    val prevName = monthName(-1).take(3)
-    val deltaText = if (pct != null) {
-        (if (pct >= 0) "+" else "") + pct.toString() + "% frente a " + prevName
+    val cur = Store.items.matching(filter).inRange(periodRange(filter.period, offset))
+    val q = query.trim()
+    val shown = if (q.isEmpty()) {
+        cur
     } else {
-        "Sin datos de " + prevName
+        cur.filter { it.note.contains(q, ignoreCase = true) || it.category.contains(q, ignoreCase = true) }
     }
-
-    val groups = items.groupBy { dayStart(it.ts) }
-    val fmtTime = SimpleDateFormat("HH:mm", Locale("es", "MX"))
+    val groups = shown.sortedByDescending { it.ts }.groupBy { dayStart(it.ts) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = LocalBottomPad.current),
     ) {
-        item(key = "header") {
-            val grow = remember { Animatable(0f) }
-            LaunchedEffect(Unit) { grow.animateTo(1f, tween(800, easing = FastOutSlowInEasing)) }
-            Column(
-                Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(monthName(0), color = Ui.TextMuted, fontSize = 13.sp)
-                Text(money(total), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
-                DeltaPill(deltaText, pct == null || pct <= 0)
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    Modifier.fillMaxWidth().height(150.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Canvas(Modifier.weight(1f).fillMaxHeight()) {
-                        val slot = size.width / daysInMonth
-                        val barW = slot * 0.5f
-                        val maxV = if (maxDay > 0) maxDay else 1.0
-                        val g = grow.value
-                        for (d in 1..daysInMonth) {
-                            val v = daily[d]
-                            val full = if (v > 0) {
-                                (v / maxV * size.height).toFloat().coerceAtLeast(4.dp.toPx())
-                            } else {
-                                3.dp.toPx()
-                            }
-                            val h = full * g
-                            val x = (d - 0.5f) * slot
-                            drawRoundRect(
-                                color = if (v > 0) Color(0xF2FFFFFF) else Color(0x22FFFFFF),
-                                topLeft = Offset(x - barW / 2, size.height - h),
-                                size = Size(barW, h),
-                                cornerRadius = CornerRadius(barW / 2, barW / 2),
-                            )
-                        }
-                        if (avg > 0) {
-                            val y = size.height - (avg / maxV * size.height).toFloat()
-                            drawLine(
-                                color = Color(0x99FFFFFF),
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = 1.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
-                            )
-                        }
-                    }
-                    Column(
-                        Modifier.fillMaxHeight().width(52.dp),
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        horizontalAlignment = Alignment.End,
+        item(key = "cabecera") {
+            Column(Modifier.statusBarsPadding()) {
+                TopBar(onSettings)
+                AnimatedContent(
+                    targetState = offset to filter,
+                    transitionSpec = { periodTransition(targetState.first > initialState.first) },
+                    label = "periodo",
+                ) { (off, f) ->
+                    ActivityHeader(f, off, onOffset = { offset = it })
+                }
+                Spacer(Modifier.height(18.dp))
+                if (searching) {
+                    SearchField(
+                        query = query,
+                        onQuery = { query = it },
+                        onClose = {
+                            searching = false
+                            query = ""
+                        },
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(money(maxDay), color = Ui.TextMuted, fontSize = 10.sp)
-                        Text("0", color = Ui.TextMuted, fontSize = 10.sp)
+                        CircleButton(R.drawable.ic_search, { searching = true }, size = 38.dp, iconSize = 18.dp)
+                        FilterPills(filter, onFilter)
                     }
                 }
-                Row(
-                    Modifier.fillMaxWidth().padding(end = 60.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    listOf(1, 9, 16, 24, daysInMonth).forEach {
-                        Text(it.toString(), color = Ui.TextMuted, fontSize = 10.sp)
-                    }
-                }
-                Text(
-                    "Promedio diario " + money(avg),
-                    color = Ui.TextMuted,
-                    fontSize = 11.sp,
-                    textAlign = TextAlign.Center,
-                )
             }
         }
 
-        if (items.isEmpty()) {
-            item(key = "empty") {
-                Text(
-                    "Sin movimientos. Los gastos que registres aparecerán aquí.",
-                    color = Ui.TextMuted,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                )
-            }
-        }
-
-        groups.forEach { (dayMs, list) ->
-            item(key = "day$dayMs") {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp, end = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(dayLabel(dayMs), color = Ui.TextMuted, fontSize = 13.sp)
-                    Text(money(list.sumOf { it.amount }), color = Ui.TextMuted, fontSize = 13.sp)
-                }
-            }
-            items(list, key = { it.id }) { e ->
-                Row(
-                    Modifier.fillMaxWidth().glass(18.dp).padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CategoryBadge(e.category, 38.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            e.note.ifEmpty { e.category },
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            maxLines = 1,
-                        )
-                        Text(
-                            e.category + " · " + fmtTime.format(Date(e.ts)),
-                            color = Ui.TextMuted,
-                            fontSize = 11.sp,
-                        )
-                    }
-                    Text(money(e.amount), color = Color.White, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "✕",
-                        color = Ui.TextMuted,
-                        modifier = Modifier.clickable { Store.remove(ctx, e.id) }.padding(4.dp),
+        if (groups.isEmpty()) {
+            item(key = "vacio") {
+                Box(Modifier.padding(top = 18.dp)) {
+                    EmptyCard(
+                        when {
+                            q.isNotEmpty() -> "Sin resultados para \"$q\"."
+                            filter.income -> "Sin ingresos en este periodo. Regístralos con + eligiendo una categoría de Ingresos."
+                            else -> "Sin gastos en este periodo. Toca + o pulsa dos veces el botón de volumen."
+                        }
                     )
                 }
+            }
+        }
+
+        groups.forEach { (day, list) ->
+            item(key = "dia$day") {
+                DayGroup(
+                    day = day,
+                    list = list,
+                    open = open,
+                    onToggle = { id -> open = if (open == id) null else id },
+                    onDelete = { e ->
+                        Store.remove(ctx, e.id)
+                        open = null
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityHeader(f: Filter, off: Int, onOffset: (Int) -> Unit) {
+    val base = Store.items.matching(f)
+    val cur = base.inRange(periodRange(f.period, off))
+    val total = cur.sumOf { it.amount }
+    val prev = base.inRange(periodRange(f.period, off - 1)).sumOf { it.amount }
+    val pct = deltaPct(total, prev)
+    val n = bucketCount(f.period, off)
+    val values = DoubleArray(n)
+    cur.forEach { e -> values[bucketOf(f.period, e.ts).coerceIn(0, n - 1)] += e.amount }
+    val elapsed = elapsedBuckets(f.period, off).coerceIn(1, n)
+    val avg = total / elapsed
+    val labels = if (f.period == Period.Mensual) {
+        listOf(0 to "1", 8 to "9", 15 to "16", 23 to "24", n - 1 to n.toString())
+    } else {
+        (0 until 12).map { it to MonthShort[it].take(1) }
+    }
+    val grow = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { grow.animateTo(1f, tween(850, easing = FastOutSlowInEasing)) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().swipePeriods(off, onOffset),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.height(4.dp))
+        PeriodSelector(f.period, off, onOffset)
+        Text(money(total), color = Ui.Cream, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+        DeltaLine(
+            pct = pct,
+            prevLabel = periodShort(f.period, off - 1),
+            good = if (f.income) (pct ?: 0) >= 0 else (pct ?: 0) <= 0,
+        )
+        Spacer(Modifier.height(20.dp))
+        BarChart(
+            values = values,
+            elapsed = elapsed,
+            avg = avg,
+            labels = labels,
+            grow = grow.value,
+            modifier = Modifier.fillMaxWidth().height(196.dp),
+        )
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onQuery: (String) -> Unit, onClose: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        try {
+            focus.requestFocus()
+        } catch (_: Exception) {
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Ui.GlassStrong)
+            .border(1.dp, Ui.GlassBorder, RoundedCornerShape(50))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GlyphIcon(R.drawable.ic_search, Ui.TextMuted, 18.dp)
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (query.isEmpty()) Text("Buscar", color = Ui.TextMuted, fontSize = 15.sp)
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = TextStyle(color = Ui.Cream, fontSize = 15.sp, fontFamily = AppFont),
+                cursorBrush = SolidColor(Ui.Cream),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        }
+        GlyphIcon(
+            R.drawable.ic_clear,
+            Ui.TextMuted,
+            20.dp,
+            Modifier.clip(CircleShape).clickable(onClick = onClose),
+        )
+    }
+}
+
+@Composable
+private fun DayGroup(
+    day: Long,
+    list: List<Expense>,
+    open: Long?,
+    onToggle: (Long) -> Unit,
+    onDelete: (Expense) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp)) {
+            Text(dayLabel(day), color = Ui.TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.weight(1f))
+            Text(money(list.sumOf { it.amount }), color = Ui.TextMuted, fontSize = 13.sp)
+        }
+        Column(Modifier.fillMaxWidth().glass(22.dp).padding(vertical = 4.dp)) {
+            list.forEach { e ->
+                MovementRow(e, open == e.id, onClick = { onToggle(e.id) }, onDelete = { onDelete(e) })
+            }
+        }
+    }
+}
+
+private val timeFormat = SimpleDateFormat("HH:mm", Locale("es", "MX"))
+
+@Composable
+private fun MovementRow(e: Expense, open: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+    var confirm by remember(e.id, open) { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .animateContentSize()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                Text(category(e.category).emoji, fontSize = 22.sp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                e.note.ifBlank { e.category },
+                color = Ui.Cream,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (e.income) "+" + money(e.amount) else money(e.amount),
+                color = if (e.income) Ui.Good else Ui.Cream,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        if (open) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 46.dp, top = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    e.category + " · " + timeFormat.format(Date(e.ts)) + " · " + e.account,
+                    color = Ui.TextMuted,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    if (confirm) "Confirmar" else "Eliminar",
+                    color = Ui.Bad,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (confirm) Color(0x26FF6B81) else Color.Transparent)
+                        .clickable { if (confirm) onDelete() else confirm = true }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
             }
         }
     }
