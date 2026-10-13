@@ -16,6 +16,11 @@ class CaptureTileService : TileService() {
     }
 
     override fun onClick() {
+        // Con el teléfono bloqueado, Android pide la huella o el PIN antes de abrir.
+        if (isLocked) unlockAndRun { launch() } else launch()
+    }
+
+    private fun launch() {
         val intent = Intent(this, QuickCaptureActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Build.VERSION.SDK_INT >= 34) {

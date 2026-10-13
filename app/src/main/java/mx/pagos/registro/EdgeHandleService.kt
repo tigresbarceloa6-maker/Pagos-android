@@ -15,6 +15,7 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -26,9 +27,11 @@ import android.view.WindowManager
 import kotlin.math.abs
 
 /**
- * Asa lateral flotante: una barrita en el borde de la pantalla. Tocarla o
- * deslizarla hacia adentro abre el registro rápido; mantenerla presionada
- * y arrastrar la cambia de altura.
+ * Servicio de acceso rápido. Mantiene dos cosas, cada una opcional:
+ * - La tarjeta "Registrar gasto" en notificaciones y pantalla de bloqueo. Al
+ *   tocarla con el teléfono bloqueado, Android pide la huella o el PIN.
+ * - El asa lateral flotante: tocarla o deslizarla hacia adentro abre el
+ *   registro; mantenerla presionada y arrastrar la cambia de altura.
  */
 class EdgeHandleService : Service() {
     private var wm: WindowManager? = null
@@ -38,48 +41,32 @@ class EdgeHandleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startAsForeground()
         wm = getSystemService(WindowManager::class.java)
+        val n = buildNotification(this)
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, n)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        removeHandle()
-        if (!Prefs.handleEnabled(this) || !Settings.canDrawOverlays(this)) {
+        if (!needed(this)) {
+            removeHandle()
             stopSelf()
             return START_NOT_STICKY
         }
-        addHandle()
+        getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, buildNotification(this))
+        if (intent?.action != ACTION_UPDATE || handle == null) {
+            removeHandle()
+            if (handleWanted(this)) addHandle()
+        }
         return START_STICKY
     }
 
     override fun onDestroy() {
         removeHandle()
         super.onDestroy()
-    }
-
-    private fun startAsForeground() {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Asa de registro rápido", NotificationManager.IMPORTANCE_MIN)
-        )
-        val open = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, QuickCaptureActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val n = Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Registro rápido activo")
-            .setContentText("Toca el asa lateral o esta notificación para registrar un gasto.")
-            .setContentIntent(open)
-            .setOngoing(true)
-            .build()
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, n)
-        }
     }
 
     private fun addHandle() {
@@ -135,15 +122,23 @@ class EdgeHandleService : Service() {
     }
 
     companion object {
-        private const val CHANNEL = "asa"
+        private const val CHANNEL = "acceso_rapido"
+        private const val OLD_CHANNEL = "asa"
         private const val NOTIFICATION_ID = 7
         private const val HANDLE_WIDTH_DP = 22
         private const val HANDLE_HEIGHT_DP = 120
+        private const val ACTION_UPDATE = "mx.pagos.registro.ACTUALIZAR"
 
-        /** Arranca, refresca o detiene el asa según los ajustes y el permiso. */
-        fun sync(ctx: Context) {
+        fun handleWanted(ctx: Context): Boolean =
+            Prefs.handleEnabled(ctx) && Settings.canDrawOverlays(ctx)
+
+        fun needed(ctx: Context): Boolean = handleWanted(ctx) || Prefs.lockCard(ctx)
+
+        /** Arranca, refresca o detiene el servicio según los ajustes. */
+        fun sync(ctx: Context, onlyNotification: Boolean = false) {
             val intent = Intent(ctx, EdgeHandleService::class.java)
-            if (Prefs.handleEnabled(ctx) && Settings.canDrawOverlays(ctx)) {
+            if (needed(ctx)) {
+                if (onlyNotification) intent.action = ACTION_UPDATE
                 try {
                     ctx.startForegroundService(intent)
                 } catch (_: Exception) {
@@ -152,6 +147,66 @@ class EdgeHandleService : Service() {
             } else {
                 ctx.stopService(intent)
             }
+        }
+
+        private fun activityIntent(ctx: Context, code: Int, target: Class<*>): PendingIntent =
+            PendingIntent.getActivity(
+                ctx,
+                code,
+                Intent(ctx, target).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+
+        private fun buildNotification(ctx: Context): Notification {
+            val nm = ctx.getSystemService(NotificationManager::class.java)
+            nm.deleteNotificationChannel(OLD_CHANNEL)
+            val channel = NotificationChannel(CHANNEL, "Acceso rápido", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Tarjeta para registrar gastos desde la pantalla de bloqueo."
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            nm.createNotificationChannel(channel)
+
+            val capture = activityIntent(ctx, 0, QuickCaptureActivity::class.java)
+            val app = activityIntent(ctx, 1, MainActivity::class.java)
+            val addAction = Notification.Action.Builder(
+                Icon.createWithResource(ctx, R.drawable.ic_add), "Registrar gasto", capture
+            ).build()
+            val openAction = Notification.Action.Builder(
+                Icon.createWithResource(ctx, R.drawable.ic_notification), "Abrir Pagos", app
+            ).build()
+
+            Store.load(ctx)
+            val spent = Store.items.filter { !it.income }.inRange(periodRange(Period.Mensual, 0)).sumOf { it.amount }
+
+            // Versión pública: la que se ve bloqueado si ocultas el contenido sensible.
+            val publicCard = Notification.Builder(ctx, CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(0xFF2459BE.toInt())
+                .setContentTitle("Registrar gasto")
+                .setContentText("Toca para registrar; se pedirá tu huella.")
+                .setContentIntent(capture)
+                .addAction(addAction)
+                .addAction(openAction)
+                .build()
+
+            return Notification.Builder(ctx, CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(0xFF2459BE.toInt())
+                .setContentTitle("Registrar gasto")
+                .setContentText("Este mes: " + money(spent) + " MXN en gastos")
+                .setSubText("Pagos")
+                .setContentIntent(capture)
+                .addAction(addAction)
+                .addAction(openAction)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setPublicVersion(publicCard)
+                .build()
         }
     }
 }

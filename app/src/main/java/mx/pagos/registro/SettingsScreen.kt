@@ -1,8 +1,13 @@
 package mx.pagos.registro
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +91,16 @@ fun SettingsScreen(tick: Int, onBack: () -> Unit) {
     var enabled by remember(tick) { mutableStateOf(Prefs.handleEnabled(ctx)) }
     var right by remember(tick) { mutableStateOf(Prefs.handleRight(ctx)) }
     val active = enabled && canDraw
+    var lockCard by remember(tick) { mutableStateOf(Prefs.lockCard(ctx)) }
+    val notifAllowed = remember(tick) {
+        Build.VERSION.SDK_INT < 33 ||
+            ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+    var notifGranted by remember(tick) { mutableStateOf(notifAllowed) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        notifGranted = it
+        EdgeHandleService.sync(ctx)
+    }
 
     Column(
         modifier = Modifier
@@ -100,6 +115,64 @@ fun SettingsScreen(tick: Int, onBack: () -> Unit) {
             CircleButton(R.drawable.ic_back, onBack)
             Spacer(Modifier.width(14.dp))
             Text("Ajustes", color = Ui.Cream, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        SettingsCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape).background(Ui.OkGreen),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    GlyphIcon(R.drawable.ic_notification, Ui.Cream, 18.dp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Pantalla de bloqueo",
+                        color = Ui.Cream,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    DotText(
+                        when {
+                            lockCard && notifGranted -> "Activa"
+                            lockCard -> "Falta el permiso"
+                            else -> "Apagada"
+                        },
+                        if (lockCard && notifGranted) Ui.Good else Color(0xFFFFC857),
+                    )
+                }
+            }
+            Text(
+                "Muestra la tarjeta \"Registrar gasto\" en la pantalla de bloqueo y en las " +
+                    "notificaciones. Al tocarla con el teléfono bloqueado, Android te pide la huella " +
+                    "(o tu PIN) y abre el registro.",
+                color = Ui.TextMuted,
+                fontSize = 13.sp,
+            )
+            Segmented(listOf("Apagada", "Activa"), if (lockCard) 1 else 0) {
+                lockCard = it == 1
+                Prefs.setLockCard(ctx, lockCard)
+                if (lockCard && !notifGranted && Build.VERSION.SDK_INT >= 33) {
+                    askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    EdgeHandleService.sync(ctx)
+                }
+            }
+            if (lockCard && !notifGranted) {
+                CapsuleButton("Permitir notificaciones", Ui.Blue, Modifier.fillMaxWidth()) {
+                    ctx.startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+                    )
+                }
+            }
+            Text(
+                "Si no aparece bloqueado: Info de la app → Notificaciones → permite mostrarlas en la " +
+                    "pantalla de bloqueo.",
+                color = Ui.TextMuted,
+                fontSize = 12.sp,
+            )
         }
 
         SettingsCard {
@@ -168,7 +241,9 @@ fun SettingsScreen(tick: Int, onBack: () -> Unit) {
             Text(
                 "• Mantén presionado el ícono de Pagos y elige \"Registrar\" (puedes arrastrarlo " +
                     "a la pantalla de inicio).\n" +
-                    "• Baja la cortina de notificaciones, edita los mosaicos y agrega \"Registrar gasto\".",
+                    "• Baja la cortina de notificaciones, edita los mosaicos y agrega \"Registrar gasto\". " +
+                    "Funciona bloqueado: te pide la huella.\n" +
+                    "• Widget: mantén presionado un espacio vacío de la pantalla de inicio → Widgets → Pagos.",
                 color = Ui.TextMuted,
                 fontSize = 13.sp,
             )

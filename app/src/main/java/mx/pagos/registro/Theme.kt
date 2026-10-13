@@ -49,6 +49,8 @@ object Ui {
     val CreamFaint = Color(0x59F2E8D8)
     val Accent = Color(0xFFA9B4FF)
     val Blue = Color(0xFF0A84FF)
+    val CancelRed = Color(0xFFE5484D)
+    val OkGreen = Color(0xFF2FB872)
     val Good = Color(0xFF3FE0C5)
     val Bad = Color(0xFFFF6B81)
     val IncomeTeal = Color(0xFF2EE6A8)

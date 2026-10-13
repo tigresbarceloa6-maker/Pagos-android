@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -93,12 +94,12 @@ fun AlertButtons(
     okText: String = "OK",
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        CapsuleButton("Cancelar", Color(0x24FFFFFF), Modifier.weight(1f), onClick = onCancel)
-        CapsuleButton(okText, Ui.Blue, Modifier.weight(1f), enabled = okEnabled, onClick = onOk)
+        CapsuleButton("Cancelar", Ui.CancelRed, Modifier.weight(1f), onClick = onCancel)
+        CapsuleButton(okText, Ui.OkGreen, Modifier.weight(1f), enabled = okEnabled, onClick = onOk)
     }
 }
 
-/** Campo del monto: texto centrado, cursor azul parpadeante y botón para borrar. */
+/** Campo del monto: texto centrado con "MXN", cursor parpadeante y botón para borrar. */
 @Composable
 fun AmountField(value: String, onClear: () -> Unit) {
     val blink = rememberInfiniteTransition(label = "cursor")
@@ -124,6 +125,8 @@ fun AmountField(value: String, onClear: () -> Unit) {
                 Text(value, color = Ui.Cream, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
                 Box(Modifier.width(2.dp).height(28.dp).alpha(cursor).background(Ui.Blue))
             }
+            Spacer(Modifier.width(8.dp))
+            Text("MXN", color = Ui.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
         if (value.isNotEmpty()) {
             GlyphIcon(

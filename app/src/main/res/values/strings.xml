@@ -3,4 +3,5 @@
     <string name="tile_label">Registrar gasto</string>
     <string name="shortcut_short">Registrar</string>
     <string name="shortcut_long">Registrar gasto</string>
+    <string name="widget_desc">Gasto del mes y botón para registrar.</string>
 </resources>

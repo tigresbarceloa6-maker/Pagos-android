@@ -266,12 +266,20 @@ object Store {
         val now = System.currentTimeMillis()
         items.add(0, Expense(now, amount, category, note.trim(), now, income, account))
         save(ctx)
+        dataChanged(ctx)
     }
 
     fun remove(ctx: Context, id: Long) {
         load(ctx)
         items.removeAll { it.id == id }
         save(ctx)
+        dataChanged(ctx)
+    }
+
+    /** Actualiza el total del mes en la tarjeta de bloqueo y en el widget. */
+    private fun dataChanged(ctx: Context) {
+        EdgeHandleService.sync(ctx, onlyNotification = true)
+        PagosWidget.updateAll(ctx)
     }
 
     fun countFor(account: String): Int = items.count { it.account == account }
@@ -359,6 +367,13 @@ object Config {
 object Prefs {
     private fun prefs(ctx: Context) =
         ctx.applicationContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+
+    /** Tarjeta "Registrar gasto" en notificaciones y pantalla de bloqueo. */
+    fun lockCard(ctx: Context): Boolean = prefs(ctx).getBoolean("lockCard", false)
+
+    fun setLockCard(ctx: Context, value: Boolean) {
+        prefs(ctx).edit().putBoolean("lockCard", value).apply()
+    }
 
     fun handleEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("handleEnabled", false)
 

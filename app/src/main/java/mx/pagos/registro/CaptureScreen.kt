@@ -224,7 +224,7 @@ private fun CategoryStep(onPick: (String) -> Unit, onCancel: () -> Unit) {
             MenuRow(c) { onPick(c.name) }
         }
     }
-    CapsuleButton("Cancelar", Color(0x24FFFFFF), Modifier.fillMaxWidth(), onClick = onCancel)
+    CapsuleButton("Cancelar", Ui.CancelRed, Modifier.fillMaxWidth(), onClick = onCancel)
 }
 
 @Composable
@@ -317,7 +317,7 @@ private fun DonePill(amount: String, category: String) {
         Column {
             Text("Guardado", color = Ui.Cream, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                money(amount.toDoubleOrNull() ?: 0.0) + " · " + category,
+                money(amount.toDoubleOrNull() ?: 0.0) + " MXN · " + category,
                 color = Ui.CreamSoft,
                 fontSize = 12.sp,
             )

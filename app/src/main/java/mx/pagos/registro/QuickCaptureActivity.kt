@@ -14,8 +14,6 @@ class QuickCaptureActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
         Store.load(this)
