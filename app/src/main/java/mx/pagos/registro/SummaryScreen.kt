@@ -191,7 +191,7 @@ private fun DonutHeader(
             } else {
                 PeriodSelector(f.period, off, onOffset)
             }
-            Text(money(display), color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Text(money(display), color = Ui.Cream, fontSize = 36.sp, fontWeight = FontWeight.Bold)
             DeltaLine(
                 pct = pct,
                 prevLabel = periodShort(f.period, off - 1),
@@ -228,11 +228,11 @@ private fun CategoryRow(
     ) {
         CategoryBadge(name)
         Spacer(Modifier.width(12.dp))
-        Text(name, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(name, color = Ui.Cream, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
         Spacer(Modifier.width(8.dp))
         Text(count.toString(), color = Ui.TextMuted, fontSize = 12.sp)
         Spacer(Modifier.weight(1f))
-        Text(money(value), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(money(value), color = Ui.Cream, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier

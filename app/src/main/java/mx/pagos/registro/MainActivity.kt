@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         tick.intValue++
+        EdgeHandleService.sync(this)
     }
 }
 
@@ -104,12 +105,12 @@ private fun Root(tick: Int) {
                     .padding(end = 22.dp, bottom = navInset + 92.dp)
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(Color(0xF2E9EDFF))
+                    .background(Color(0xF2F2E8D8))
                     .border(1.dp, Color(0x33FFFFFF), CircleShape)
                     .clickable { ctx.startActivity(Intent(ctx, QuickCaptureActivity::class.java)) },
                 contentAlignment = Alignment.Center,
             ) {
-                GlyphIcon(R.drawable.ic_add, Color(0xFF3D63F5), 24.dp)
+                GlyphIcon(R.drawable.ic_add, Color(0xFF173A86), 24.dp)
             }
 
             NavBar(

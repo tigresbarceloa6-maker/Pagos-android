@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 
 object Ui {
     // Fondo: color superior por pantalla que se funde en azul marino.
-    val Base = Color(0xFF0D1324)
-    val BaseDeep = Color(0xFF070A14)
+    val Base = Color(0xFF060912)
+    val BaseDeep = Color(0xFF020306)
     val TopActivity = Color(0xFF1D52AE)
     val TopSummary = Color(0xFF33466C)
     val TopBudget = Color(0xFF1E4A62)
@@ -37,10 +37,16 @@ object Ui {
     val GlassStrong = Color(0x1FFFFFFF)
     val GlassBorder = Color(0x14FFFFFF)
     val PillBg = Color(0x1AFFFFFF)
-    val Menu = Color(0xFF1F2539)
+    val Menu = Color(0xFF141826)
 
-    val TextMuted = Color(0xFF8F9BB8)
-    val TextSoft = Color(0xCCFFFFFF)
+    val TextMuted = Color(0xFFA39E93)
+    val TextSoft = Color(0xCCF2E8D8)
+
+    // Blanco beige para textos, iconos y barras.
+    val Cream = Color(0xFFF2E8D8)
+    val CreamSoft = Color(0xCCF2E8D8)
+    val CreamDim = Color(0x80F2E8D8)
+    val CreamFaint = Color(0x59F2E8D8)
     val Accent = Color(0xFFA9B4FF)
     val Blue = Color(0xFF0A84FF)
     val Good = Color(0xFF3FE0C5)
@@ -48,17 +54,17 @@ object Ui {
     val IncomeTeal = Color(0xFF2EE6A8)
     val ExpenseBlue = Color(0xFF3B8BFF)
 
-    val NavBg = Color(0xE61A2032)
-    val AlertBg = Color(0xF0272B36)
+    val NavBg = Color(0xEB0E111B)
+    val AlertBg = Color(0xF2181B24)
     val KeyBg = Color(0x40FFFFFF)
-    val KeyboardBg = Color(0xF21B1D24)
+    val KeyboardBg = Color(0xF50E1016)
 }
 
-val Inter = FontFamily(
-    Font(R.font.inter_regular, FontWeight.Normal),
-    Font(R.font.inter_medium, FontWeight.Medium),
-    Font(R.font.inter_semibold, FontWeight.SemiBold),
-    Font(R.font.inter_bold, FontWeight.Bold),
+val AppFont = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold),
 )
 
 private fun Typography.withFont(f: FontFamily): Typography = copy(
@@ -91,11 +97,12 @@ fun AppTheme(content: @Composable () -> Unit) {
             onPrimary = Color(0xFF0B1126),
             background = Ui.Base,
             surface = Ui.Menu,
-            onSurface = Color.White,
+            onSurface = Ui.Cream,
+            onBackground = Ui.Cream,
             surfaceVariant = Color(0xFF1D2547),
             onSurfaceVariant = Ui.TextMuted,
         ),
-        typography = Typography().withFont(Inter),
+        typography = Typography().withFont(AppFont),
         content = content,
     )
 }

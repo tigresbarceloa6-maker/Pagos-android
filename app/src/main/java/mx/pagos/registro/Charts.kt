@@ -161,7 +161,7 @@ fun BarChart(
                 val h = full * grow
                 val x = slot * (i + 0.5f)
                 drawRoundRect(
-                    color = if (v > 0) Color.White else Color(0x26FFFFFF),
+                    color = if (v > 0) Ui.Cream else Color(0x26FFFFFF),
                     topLeft = Offset(x - barW / 2f, size.height - h),
                     size = Size(barW, h),
                     cornerRadius = CornerRadius(barW / 2f, barW / 2f),
@@ -170,7 +170,7 @@ fun BarChart(
             if (avg > 0 && maxV > 0) {
                 val y = size.height - (avg / top * size.height).toFloat()
                 drawLine(
-                    color = Color(0xB3FFFFFF),
+                    color = Ui.CreamSoft,
                     start = Offset(0f, y),
                     end = Offset(size.width + 6.dp.toPx(), y),
                     strokeWidth = 1.2.dp.toPx(),

@@ -163,7 +163,7 @@ private fun ActivityHeader(f: Filter, off: Int, onOffset: (Int) -> Unit) {
     ) {
         Spacer(Modifier.height(4.dp))
         PeriodSelector(f.period, off, onOffset)
-        Text(money(total), color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+        Text(money(total), color = Ui.Cream, fontSize = 36.sp, fontWeight = FontWeight.Bold)
         DeltaLine(
             pct = pct,
             prevLabel = periodShort(f.period, off - 1),
@@ -208,8 +208,8 @@ private fun SearchField(query: String, onQuery: (String) -> Unit, onClose: () ->
                 value = query,
                 onValueChange = onQuery,
                 singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 15.sp, fontFamily = Inter),
-                cursorBrush = SolidColor(Color.White),
+                textStyle = TextStyle(color = Ui.Cream, fontSize = 15.sp, fontFamily = AppFont),
+                cursorBrush = SolidColor(Ui.Cream),
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         }
@@ -263,7 +263,7 @@ private fun MovementRow(e: Expense, open: Boolean, onClick: () -> Unit, onDelete
             Spacer(Modifier.width(12.dp))
             Text(
                 e.note.ifBlank { e.category },
-                color = Color.White,
+                color = Ui.Cream,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -273,7 +273,7 @@ private fun MovementRow(e: Expense, open: Boolean, onClick: () -> Unit, onDelete
             Spacer(Modifier.width(8.dp))
             Text(
                 if (e.income) "+" + money(e.amount) else money(e.amount),
-                color = if (e.income) Ui.Good else Color.White,
+                color = if (e.income) Ui.Good else Ui.Cream,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
             )

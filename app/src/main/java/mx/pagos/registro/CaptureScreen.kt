@@ -238,7 +238,7 @@ private fun MenuRow(c: Category, onClick: () -> Unit) {
     ) {
         Text(c.emoji, fontSize = 18.sp)
         Spacer(Modifier.width(12.dp))
-        Text(c.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        Text(c.name, color = Ui.Cream, fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -287,12 +287,12 @@ private fun GestureBanner() {
             Modifier.size(28.dp).clip(CircleShape).background(Ui.Blue),
             contentAlignment = Alignment.Center,
         ) {
-            GlyphIcon(R.drawable.ic_volume, Color.White, 16.dp)
+            GlyphIcon(R.drawable.ic_gesture, Ui.Cream, 16.dp)
         }
         Spacer(Modifier.width(10.dp))
         Column {
-            Text("Botón de volumen", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text("Doble pulsación detectada", color = Color(0xB3FFFFFF), fontSize = 11.sp)
+            Text("Asa lateral", color = Ui.Cream, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("Gesto detectado", color = Ui.CreamSoft, fontSize = 11.sp)
         }
     }
 }
@@ -315,10 +315,10 @@ private fun DonePill(amount: String, category: String) {
         }
         Spacer(Modifier.width(10.dp))
         Column {
-            Text("Guardado", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Guardado", color = Ui.Cream, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 money(amount.toDoubleOrNull() ?: 0.0) + " · " + category,
-                color = Color(0xB3FFFFFF),
+                color = Ui.CreamSoft,
                 fontSize = 12.sp,
             )
         }

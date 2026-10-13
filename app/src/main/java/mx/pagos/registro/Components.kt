@@ -66,7 +66,7 @@ fun Modifier.tapNoRipple(onClick: () -> Unit): Modifier = this.clickable(
 )
 
 @Composable
-fun GlyphIcon(res: Int, tint: Color = Color.White, size: Dp = 22.dp, modifier: Modifier = Modifier) {
+fun GlyphIcon(res: Int, tint: Color = Ui.Cream, size: Dp = 22.dp, modifier: Modifier = Modifier) {
     Icon(
         painter = painterResource(res),
         contentDescription = null,
@@ -92,7 +92,7 @@ fun CircleButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        GlyphIcon(res, Color.White, iconSize)
+        GlyphIcon(res, Ui.Cream, iconSize)
     }
 }
 
@@ -132,7 +132,7 @@ fun Pill(text: String, onClick: (() -> Unit)? = null) {
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 9.dp),
     ) {
-        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(text, color = Ui.Cream, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -152,7 +152,7 @@ fun MenuPill(text: String, options: List<String>, onPick: (Int) -> Unit) {
                     text = {
                         Text(
                             option,
-                            color = if (option == text) Color.White else Ui.TextSoft,
+                            color = if (option == text) Ui.Cream else Ui.TextSoft,
                             fontWeight = if (option == text) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     },
@@ -210,7 +210,7 @@ fun PeriodSelector(period: Period, offset: Int, onOffset: (Int) -> Unit) {
                     text = {
                         Text(
                             periodTitle(period, i),
-                            color = if (i == offset) Color.White else Ui.TextSoft,
+                            color = if (i == offset) Ui.Cream else Ui.TextSoft,
                             fontWeight = if (i == offset) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     },
@@ -304,7 +304,7 @@ fun AxisText(text: String, x: Dp, y: Dp, strong: Boolean = false) {
     Text(
         text,
         modifier = Modifier.offset(x = x, y = y),
-        color = if (strong) Color.White else Ui.TextMuted,
+        color = if (strong) Ui.Cream else Ui.TextMuted,
         fontSize = 11.sp,
         fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Normal,
     )
@@ -328,7 +328,7 @@ fun CapsuleButton(
     ) {
         Text(
             text,
-            color = if (enabled) Color.White else Color(0x80FFFFFF),
+            color = if (enabled) Ui.Cream else Ui.CreamDim,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -401,12 +401,13 @@ fun NavBar(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    GlyphIcon(icon, if (sel) Color.White else Color(0xCCFFFFFF), 21.dp)
+                    GlyphIcon(icon, if (sel) Ui.Cream else Ui.CreamSoft, 21.dp)
                     Spacer(Modifier.height(3.dp))
                     Text(
                         label,
-                        color = if (sel) Color.White else Color(0xB3FFFFFF),
-                        fontSize = 10.sp,
+                        color = if (sel) Ui.Cream else Ui.CreamSoft,
+                        fontSize = 9.5.sp,
+                        letterSpacing = (-0.2).sp,
                         fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Medium,
                         maxLines = 1,
                         softWrap = false,

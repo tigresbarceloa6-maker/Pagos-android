@@ -355,12 +355,28 @@ object Config {
     }
 }
 
+/** Ajustes del asa lateral flotante. */
 object Prefs {
-    /** 0 = Volumen +, 1 = Volumen −, 2 = cualquiera */
-    fun button(ctx: Context): Int =
-        ctx.getSharedPreferences("prefs", Context.MODE_PRIVATE).getInt("button", 0)
+    private fun prefs(ctx: Context) =
+        ctx.applicationContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
-    fun setButton(ctx: Context, value: Int) {
-        ctx.getSharedPreferences("prefs", Context.MODE_PRIVATE).edit().putInt("button", value).apply()
+    fun handleEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("handleEnabled", false)
+
+    fun setHandleEnabled(ctx: Context, value: Boolean) {
+        prefs(ctx).edit().putBoolean("handleEnabled", value).apply()
+    }
+
+    /** true = borde derecho, false = borde izquierdo. */
+    fun handleRight(ctx: Context): Boolean = prefs(ctx).getBoolean("handleRight", true)
+
+    fun setHandleRight(ctx: Context, value: Boolean) {
+        prefs(ctx).edit().putBoolean("handleRight", value).apply()
+    }
+
+    /** Posición vertical en píxeles; -1 si nunca se ha movido. */
+    fun handleY(ctx: Context): Int = prefs(ctx).getInt("handleY", -1)
+
+    fun setHandleY(ctx: Context, value: Int) {
+        prefs(ctx).edit().putInt("handleY", value).apply()
     }
 }

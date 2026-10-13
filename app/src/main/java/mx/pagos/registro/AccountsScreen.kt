@@ -64,7 +64,7 @@ fun AccountsScreen(onSettings: () -> Unit, onAddAccount: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("Saldo total", color = Ui.TextMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Text(money(total), color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Text(money(total), color = Ui.Cream, fontSize = 36.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DotText("Ingresos " + money(inc), Ui.IncomeTeal)
@@ -146,7 +146,7 @@ private fun AccountRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         name,
-                        color = Color.White,
+                        color = Ui.Cream,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -178,7 +178,7 @@ private fun AccountRow(
                 color = when {
                     balance > 0 -> Ui.Good
                     balance < 0 -> Ui.Bad
-                    else -> Color.White
+                    else -> Ui.Cream
                 },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -191,7 +191,7 @@ private fun AccountRow(
         ) {
             if (!isDefault) {
                 DropdownMenuItem(
-                    text = { Text("Usar como predeterminada", color = Color.White) },
+                    text = { Text("Usar como predeterminada", color = Ui.Cream) },
                     onClick = {
                         menu = false
                         onDefault()

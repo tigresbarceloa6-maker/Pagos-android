@@ -78,7 +78,7 @@ fun AlertCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 fun AlertTitle(text: String) {
     Text(
         text,
-        color = Color(0xE6FFFFFF),
+        color = Ui.Cream,
         fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 4.dp, top = 2.dp),
@@ -119,16 +119,16 @@ fun AmountField(value: String, onClear: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (value.isEmpty()) {
                 Box(Modifier.width(2.dp).height(28.dp).alpha(cursor).background(Ui.Blue))
-                Text("Monto", color = Color(0x59FFFFFF), fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                Text("Monto", color = Ui.CreamFaint, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
             } else {
-                Text(value, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                Text(value, color = Ui.Cream, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
                 Box(Modifier.width(2.dp).height(28.dp).alpha(cursor).background(Ui.Blue))
             }
         }
         if (value.isNotEmpty()) {
             GlyphIcon(
                 R.drawable.ic_clear,
-                Color(0x80FFFFFF),
+                Ui.CreamDim,
                 20.dp,
                 Modifier
                     .align(Alignment.CenterEnd)
@@ -177,13 +177,13 @@ fun NumericKeypad(onKey: (String) -> Unit, modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center,
                     ) {
                         when {
-                            key == "⌫" -> GlyphIcon(R.drawable.ic_backspace, Color.White, 24.dp)
-                            letters.isEmpty() -> Text(key, color = Color.White, fontSize = 25.sp)
+                            key == "⌫" -> GlyphIcon(R.drawable.ic_backspace, Ui.Cream, 24.dp)
+                            letters.isEmpty() -> Text(key, color = Ui.Cream, fontSize = 25.sp)
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(key, color = Color.White, fontSize = 24.sp, lineHeight = 26.sp)
+                                Text(key, color = Ui.Cream, fontSize = 24.sp, lineHeight = 26.sp)
                                 Text(
                                     letters,
-                                    color = Color.White,
+                                    color = Ui.Cream,
                                     fontSize = 9.sp,
                                     lineHeight = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -225,7 +225,7 @@ fun NoteField(
     BasicTextField(
         value = value,
         onValueChange = onValue,
-        textStyle = TextStyle(color = Color.White, fontSize = 17.sp, fontFamily = Inter),
+        textStyle = TextStyle(color = Ui.Cream, fontSize = 17.sp, fontFamily = AppFont),
         cursorBrush = SolidColor(Ui.Blue),
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Sentences,
@@ -245,7 +245,7 @@ fun NoteField(
                     .padding(horizontal = 14.dp, vertical = 15.dp)
             ) {
                 if (value.isEmpty()) {
-                    Text(placeholder, color = Color(0x59FFFFFF), fontSize = 17.sp)
+                    Text(placeholder, color = Ui.CreamFaint, fontSize = 17.sp)
                 }
                 inner()
             }

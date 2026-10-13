@@ -79,7 +79,7 @@ fun BudgetScreen(onSettings: () -> Unit, onEdit: (String) -> Unit) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
-                Text(money(remaining), color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                Text(money(remaining), color = Ui.Cream, fontSize = 36.sp, fontWeight = FontWeight.Bold)
                 if (totalBudget <= 0) {
                     Text(
                         "Toca una categoría\npara definir su límite",
@@ -157,14 +157,14 @@ private fun BudgetRow(c: Category, spent: Double, budget: Double?, progress: Flo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     c.name,
-                    color = Color.White,
+                    color = Ui.Cream,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Text(money(spent), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(money(spent), color = Ui.Cream, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 if (budget != null) {
                     Text(" / " + money(budget), color = Ui.TextMuted, fontSize = 12.sp)
                 }

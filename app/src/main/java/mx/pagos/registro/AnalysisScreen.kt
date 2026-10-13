@@ -113,7 +113,7 @@ fun AnalysisScreen(filter: Filter, onFilter: (Filter) -> Unit, onSettings: () ->
                         color = Ui.TextMuted,
                         fontSize = 13.sp,
                     )
-                    Text(money(restShown[sel2]), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                    Text(money(restShown[sel2]), color = Ui.Cream, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                 }
                 CircleButton(R.drawable.ic_coins, { cumulative = !cumulative }, size = 36.dp, iconSize = 18.dp)
             }
@@ -146,7 +146,7 @@ private fun Legend(label: String, color: Color, value: Double) {
             Text(label, color = Ui.TextMuted, fontSize = 12.sp)
         }
         Spacer(Modifier.height(2.dp))
-        Text(money(value), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text(money(value), color = Ui.Cream, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -157,7 +157,7 @@ private fun PeriodLabels(labels: List<String>, selected: Int, onSelect: (Int) ->
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Text(
                     label,
-                    color = if (i == selected) Color.White else Ui.TextMuted,
+                    color = if (i == selected) Ui.Cream else Ui.TextMuted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
@@ -291,7 +291,7 @@ private fun RemainingBars(
             if (avg > 0) {
                 val y = size.height - (avg / top * size.height).toFloat()
                 drawLine(
-                    color = Color(0xB3FFFFFF),
+                    color = Ui.CreamSoft,
                     start = Offset(0f, y),
                     end = Offset(size.width + 6.dp.toPx(), y),
                     strokeWidth = 1.2.dp.toPx(),
@@ -369,8 +369,8 @@ private fun CalendarCard(offset: Int, items: List<Expense>) {
                                 .background(if (v > 0) Color(0xFF2F6BFF).copy(alpha = strength) else Color(0x0FFFFFFF))
                                 .then(
                                     when (d) {
-                                        picked -> Modifier.border(1.5.dp, Color.White, shape)
-                                        today -> Modifier.border(1.dp, Color(0x80FFFFFF), shape)
+                                        picked -> Modifier.border(1.5.dp, Ui.Cream, shape)
+                                        today -> Modifier.border(1.dp, Ui.CreamDim, shape)
                                         else -> Modifier
                                     }
                                 )
@@ -379,7 +379,7 @@ private fun CalendarCard(offset: Int, items: List<Expense>) {
                         ) {
                             Text(
                                 (d + 1).toString(),
-                                color = if (v > 0) Color.White else Ui.TextMuted,
+                                color = if (v > 0) Ui.Cream else Ui.TextMuted,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                             )

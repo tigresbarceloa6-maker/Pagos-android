@@ -1,6 +1,5 @@
 package mx.pagos.registro
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -27,7 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,13 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private fun serviceEnabled(ctx: Context): Boolean {
-    val enabled = Settings.Secure.getString(
-        ctx.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    ) ?: return false
-    return enabled.contains(ctx.packageName) && enabled.contains("VolumeGestureService")
-}
-
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
@@ -55,11 +47,45 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
+/** Selector de dos o más opciones en forma de cápsula. */
+@Composable
+private fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(50))
+            .background(Color(0x14FFFFFF))
+            .padding(4.dp),
+    ) {
+        options.forEachIndexed { i, label ->
+            val sel = selected == i
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (sel) Color(0x38FFFFFF) else Color.Transparent)
+                    .clickable { onSelect(i) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    color = if (sel) Ui.Cream else Ui.TextSoft,
+                    fontSize = 13.sp,
+                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun SettingsScreen(tick: Int, onBack: () -> Unit) {
     val ctx = LocalContext.current
-    val active = remember(tick) { serviceEnabled(ctx) }
-    var button by remember(tick) { mutableIntStateOf(Prefs.button(ctx)) }
+    val canDraw = remember(tick) { Settings.canDrawOverlays(ctx) }
+    var enabled by remember(tick) { mutableStateOf(Prefs.handleEnabled(ctx)) }
+    var right by remember(tick) { mutableStateOf(Prefs.handleRight(ctx)) }
+    val active = enabled && canDraw
 
     Column(
         modifier = Modifier
@@ -73,7 +99,7 @@ fun SettingsScreen(tick: Int, onBack: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CircleButton(R.drawable.ic_back, onBack)
             Spacer(Modifier.width(14.dp))
-            Text("Ajustes", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Text("Ajustes", color = Ui.Cream, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         }
 
         SettingsCard {
@@ -82,80 +108,79 @@ fun SettingsScreen(tick: Int, onBack: () -> Unit) {
                     Modifier.size(34.dp).clip(CircleShape).background(Ui.Blue),
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlyphIcon(R.drawable.ic_volume, Color.White, 18.dp)
+                    GlyphIcon(R.drawable.ic_gesture, Ui.Cream, 18.dp)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        "Registro rápido con volumen",
-                        color = Color.White,
+                        "Asa lateral",
+                        color = Ui.Cream,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     DotText(
-                        if (active) "Activo" else "Inactivo",
+                        when {
+                            active -> "Activa"
+                            enabled -> "Falta el permiso"
+                            else -> "Apagada"
+                        },
                         if (active) Ui.Good else Color(0xFFFFC857),
                     )
                 }
             }
             Text(
-                "Pulsa dos veces el botón de volumen en cualquier pantalla, incluso con el teléfono " +
-                    "bloqueado, para registrar un gasto al instante.",
+                "Una barrita discreta en el borde de la pantalla, visible sobre cualquier app. " +
+                    "Tócala o deslízala hacia adentro para registrar un gasto. Mantenla presionada " +
+                    "y arrastra para cambiarla de altura.",
                 color = Ui.TextMuted,
                 fontSize = 13.sp,
             )
-            Text(
-                "1. Abre los ajustes de accesibilidad.\n" +
-                    "2. Entra a Apps instaladas (o Servicios descargados).\n" +
-                    "3. Elige Pagos y actívalo. No lee la pantalla; solo detecta el botón de volumen.",
-                color = Ui.TextMuted,
-                fontSize = 13.sp,
-            )
-            CapsuleButton("Abrir accesibilidad", Ui.Blue, Modifier.fillMaxWidth()) {
-                ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            Segmented(listOf("Apagada", "Activa"), if (enabled) 1 else 0) {
+                enabled = it == 1
+                Prefs.setHandleEnabled(ctx, enabled)
+                EdgeHandleService.sync(ctx)
             }
-        }
-
-        SettingsCard {
-            Text("Doble pulsación de", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0x14FFFFFF))
-                    .padding(4.dp),
-            ) {
-                listOf("Volumen +", "Volumen −", "Cualquiera").forEachIndexed { i, label ->
-                    val sel = button == i
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(if (sel) Color(0x38FFFFFF) else Color.Transparent)
-                            .clickable {
-                                button = i
-                                Prefs.setButton(ctx, i)
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            label,
-                            color = if (sel) Color.White else Ui.TextSoft,
-                            fontSize = 13.sp,
-                            fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Medium,
+            if (enabled && !canDraw) {
+                Text(
+                    "Activa \"Mostrar sobre otras apps\" para Pagos y vuelve a esta pantalla.",
+                    color = Ui.TextMuted,
+                    fontSize = 13.sp,
+                )
+                CapsuleButton("Dar permiso", Ui.Blue, Modifier.fillMaxWidth()) {
+                    ctx.startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + ctx.packageName),
                         )
-                    }
+                    )
                 }
             }
+            Text("Lado de la pantalla", color = Ui.Cream, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Segmented(listOf("Izquierda", "Derecha"), if (right) 1 else 0) {
+                right = it == 1
+                Prefs.setHandleRight(ctx, right)
+                EdgeHandleService.sync(ctx)
+            }
         }
 
         SettingsCard {
-            Text("Ajustes para Xiaomi (HyperOS)", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text("Otros accesos rápidos", color = Ui.Cream, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             Text(
-                "Si el gesto deja de responder, el sistema cerró la app. Revisa:\n" +
-                    "• Info de la app → Inicio automático: activado.\n" +
-                    "• Info de la app → Ahorro de batería: Sin restricciones.\n" +
+                "• Mantén presionado el ícono de Pagos y elige \"Registrar\" (puedes arrastrarlo " +
+                    "a la pantalla de inicio).\n" +
+                    "• Baja la cortina de notificaciones, edita los mosaicos y agrega \"Registrar gasto\".",
+                color = Ui.TextMuted,
+                fontSize = 13.sp,
+            )
+        }
+
+        SettingsCard {
+            Text("Ajustes para Xiaomi (HyperOS)", color = Ui.Cream, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(
+                "Si el asa desaparece, el sistema cerró la app. En Info de la app revisa:\n" +
+                    "• Inicio automático: activado.\n" +
+                    "• Otros permisos → Mostrar ventanas emergentes en segundo plano: permitido.\n" +
+                    "• Ahorro de batería: Sin restricciones.\n" +
                     "• Pantalla de apps recientes: mantén presionada la tarjeta de Pagos y fíjala con el candado.",
                 color = Ui.TextMuted,
                 fontSize = 13.sp,
